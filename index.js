@@ -4,14 +4,14 @@
 // https://serverless.com/framework/docs/providers/aws/guide/plugins/
 // https://github.com/softprops/lambda-rust/
 
-const { spawnSync } = require("child_process");
-const { homedir } = require("os");
+const {spawnSync} = require("child_process");
+const {homedir} = require("os");
 const path = require("path");
 
 const DEFAULT_DOCKER_TAG = "0.2.6-rust-1.39.0";
 const RUST_RUNTIME = "rust";
 const BASE_RUNTIME = "provided";
-const NO_OUTPUT_CAPTURE = { stdio: ["ignore", process.stdout, process.stderr] };
+const NO_OUTPUT_CAPTURE = {stdio: ["ignore", process.stdout, process.stderr]};
 
 function includeInvokeHook(serverlessVersion) {
   let [major, minor] = serverlessVersion.split(".");
@@ -39,7 +39,7 @@ class RustPlugin {
         dockerTag: DEFAULT_DOCKER_TAG
       },
       (this.serverless.service.custom && this.serverless.service.custom.rust) ||
-        {}
+      {}
     );
 
     // By default, Serverless examines node_modules to figure out which
@@ -56,6 +56,7 @@ class RustPlugin {
     const cargoDownloads = path.join(cargoHome, 'git');
 
     const dockerCLI = process.env['SLS_DOCKER_CLI'] || 'docker';
+    process.env['SLS_SERVICE_PATH'] = this.servicePath;
     const defaultArgs = [
       'run',
       '--rm',
@@ -69,7 +70,16 @@ class RustPlugin {
       `-v`,
       `${cargoDownloads}:/root/.cargo/git`
     ];
-    const customArgs = (process.env['SLS_DOCKER_ARGS'] || '').split(' ') || [];
+
+    let customArgs = [];
+    if (process.env['SLS_DOCKER_ARGS'] !== undefined) {
+      let customArgText = process.env['SLS_DOCKER_ARGS'];
+      // perform env substitutions
+      for (const [key, value] of Object.entries(process.env)) {
+        customArgText = customArgText.replace(new RegExp(`\\$${key}`, 'g'), value);
+      }
+      customArgs = customArgText.split(' ') || [];
+    }
 
     let cargoFlags = (funcArgs || {}).cargoFlags || this.custom.cargoFlags;
     if (profile) {
@@ -164,8 +174,8 @@ class RustPlugin {
     if (!rustFunctionsFound) {
       throw new Error(
         `Error: no Rust functions found. ` +
-          `Use 'runtime: ${RUST_RUNTIME}' in global or ` +
-          `function configuration to use this plugin.`
+        `Use 'runtime: ${RUST_RUNTIME}' in global or ` +
+        `function configuration to use this plugin.`
       );
     }
   }
